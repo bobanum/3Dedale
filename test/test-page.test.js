@@ -12,6 +12,7 @@ test("test html page provides maze size form and result output", () => {
 
     assert.match(html, /<link rel="stylesheet" href="\.\/css\/test-page\.css">/);
     assert.match(html, /<script type="module" src="\.\/src\/app\.js"><\/script>/);
+    assert.match(html, /id="mazeCanvas"/);
     assert.match(html, /<form id="mazeForm">/);
     assert.match(html, /id="width"/);
     assert.match(html, /id="height"/);

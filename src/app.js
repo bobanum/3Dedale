@@ -3,11 +3,16 @@ import { Maze } from "./Maze.js";
 import { Wanderer } from "./Wanderer.js";
 import { AStarSolver } from "./AStarSolver.js";
 import { Renderer } from "./Renderer.js";
+import { ThreeMazeEngine } from "./ThreeMazeEngine.js";
 
 const mazeForm = document.getElementById("mazeForm");
 const summary = document.getElementById("summary");
 const summaryList = document.getElementById("summaryList");
 const output = document.getElementById("output");
+const mazeCanvas = document.getElementById("mazeCanvas");
+
+const engine = new ThreeMazeEngine(mazeCanvas);
+engine.start();
 
 mazeForm.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -42,4 +47,6 @@ mazeForm.addEventListener("submit", (event) => {
         path: path ? path.map((point) => ({ x: point.x, y: point.y, z: point.z })) : [],
         rendered
     }, null, 2);
+
+    engine.setMaze(generatedMaze, path || []);
 });

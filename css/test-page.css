@@ -47,6 +47,23 @@ button {
     padding-left: 1.25rem;
 }
 
+.viewport {
+    margin-top: 1.25rem;
+    border: 1px solid #31415f;
+    border-radius: 1rem;
+    overflow: hidden;
+    background:
+        radial-gradient(circle at top, rgba(96, 160, 255, 0.18), transparent 40%),
+        linear-gradient(180deg, rgba(11, 16, 32, 0.92), rgba(8, 10, 16, 0.98));
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
+}
+
+#mazeCanvas {
+    display: block;
+    width: 100%;
+    height: min(68vh, 720px);
+}
+
 #output {
     display: none;
     margin-top: 1rem;
