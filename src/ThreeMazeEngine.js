@@ -33,12 +33,40 @@ export class ThreeMazeEngine {
             door: new THREE.LineBasicMaterial({ color: 0x8fd3ff }),
             ladder: new THREE.LineBasicMaterial({ color: 0xffcc66 })
         };
+        this.ladderRailMaterial = new THREE.MeshStandardMaterial({
+            color: 0xffcc66,
+            roughness: 0.25,
+            metalness: 0.55
+        });
+        this.ladderRungMaterial = new THREE.MeshStandardMaterial({
+            color: 0xffe19e,
+            roughness: 0.3,
+            metalness: 0.42
+        });
+        this.holeMaterial = new THREE.MeshStandardMaterial({
+            color: 0x0a111f,
+            roughness: 0.9,
+            metalness: 0.05,
+            side: THREE.DoubleSide
+        });
+        this.holeRimMaterial = new THREE.MeshStandardMaterial({
+            color: 0x6da4ff,
+            emissive: 0x102340,
+            roughness: 0.35,
+            metalness: 0.35
+        });
         this.wallMaterial = new THREE.MeshStandardMaterial({
             color: 0x7da0d8,
             transparent: false,
             opacity: 1,
             roughness: 0.22,
             metalness: 0.08
+        });
+        this.floorMaterial = new THREE.MeshStandardMaterial({
+            color: 0x243850,
+            roughness: 0.72,
+            metalness: 0.14,
+            side: THREE.DoubleSide
         });
 
         this._rotation = 0;
@@ -112,8 +140,96 @@ export class ThreeMazeEngine {
             this.root.add(new THREE.Line(geometry, material));
         };
 
-        const wallThickness = 0.08;
-        const wallSpan = spacing * 0.9;
+        const addLadder = (fromVec, toVec) => {
+            const low = fromVec.y <= toVec.y ? fromVec : toVec;
+            const high = fromVec.y <= toVec.y ? toVec : fromVec;
+            const ladderHeight = Math.max(high.y - low.y, 0.001);
+
+            const railOffset = 0.16;
+            const railRadius = 0.035;
+            const rungRadius = 0.024;
+            const rungWidth = railOffset * 2;
+
+            const makeRail = (offset) => {
+                const railGeometry = new THREE.CylinderGeometry(railRadius, railRadius, ladderHeight, 10);
+                const rail = new THREE.Mesh(railGeometry, this.ladderRailMaterial);
+                rail.position.set(low.x + offset, low.y + ladderHeight * 0.5, low.z);
+                this.root.add(rail);
+            };
+
+            makeRail(-railOffset);
+            makeRail(railOffset);
+
+            const rungCount = Math.max(2, Math.floor(ladderHeight / 0.28));
+            for (let i = 0; i <= rungCount; i += 1) {
+                const t = i / rungCount;
+                const y = low.y + t * ladderHeight;
+                const rungGeometry = new THREE.CylinderGeometry(rungRadius, rungRadius, rungWidth, 8);
+                const rung = new THREE.Mesh(rungGeometry, this.ladderRungMaterial);
+                rung.rotation.z = Math.PI * 0.5;
+                rung.position.set(low.x, y, low.z);
+                this.root.add(rung);
+            }
+        };
+
+        const holesByBoundary = new Map();
+        for (const [fromKey, neighbors] of maze.connections.entries()) {
+            const from = maze.pointFromKey(fromKey);
+            for (const [toKey, meta] of neighbors.entries()) {
+                if (meta.type !== "ladder" || fromKey > toKey) {
+                    continue;
+                }
+
+                const to = maze.pointFromKey(toKey);
+                const lowerZ = Math.min(from.z, to.z);
+                if (!holesByBoundary.has(lowerZ)) {
+                    holesByBoundary.set(lowerZ, new Set());
+                }
+
+                const key = `${from.x},${from.y}`;
+                const altKey = `${to.x},${to.y}`;
+                holesByBoundary.get(lowerZ).add(from.z <= to.z ? key : altKey);
+            }
+        }
+
+        if (maze.depth > 1) {
+            const slabHalfWidth = maze.width * spacing * 0.5;
+            const slabHalfDepth = maze.height * spacing * 0.5;
+            const holeRadius = Math.max(0.15, spacing * 0.14);
+
+            for (let z = 0; z < maze.depth - 1; z += 1) {
+                const shape = new THREE.Shape();
+                shape.moveTo(-slabHalfWidth, -slabHalfDepth);
+                shape.lineTo(slabHalfWidth, -slabHalfDepth);
+                shape.lineTo(slabHalfWidth, slabHalfDepth);
+                shape.lineTo(-slabHalfWidth, slabHalfDepth);
+                shape.lineTo(-slabHalfWidth, -slabHalfDepth);
+
+                const ladderHoles = holesByBoundary.get(z) || new Set();
+                for (const key of ladderHoles) {
+                    const [x, y] = key.split(",").map(Number);
+                    const p = pointToVector(new Point(x, y, z));
+                    const hole = new THREE.Path();
+                    hole.absellipse(p.x, p.z, holeRadius, holeRadius, 0, Math.PI * 2, false, 0);
+                    shape.holes.push(hole);
+
+                    const rimGeometry = new THREE.TorusGeometry(holeRadius + 0.06, 0.02, 10, 22);
+                    const rim = new THREE.Mesh(rimGeometry, this.holeRimMaterial);
+                    rim.rotation.x = Math.PI * 0.5;
+                    rim.position.set(p.x, (z + 0.5) * spacing - offsetZ + 0.01, p.z);
+                    this.root.add(rim);
+                }
+
+                const slabGeometry = new THREE.ShapeGeometry(shape);
+                const slab = new THREE.Mesh(slabGeometry, this.floorMaterial);
+                slab.rotation.x = Math.PI * 0.5;
+                slab.position.y = (z + 0.5) * spacing - offsetZ;
+                this.root.add(slab);
+            }
+        }
+
+        const wallThickness = 0.2;
+        const wallSpan = spacing * 1.1;
 
         for (const wall of maze.walls.values()) {
             if (wall.open) {
@@ -128,13 +244,15 @@ export class ThreeMazeEngine {
             const dy = Math.abs(wall.from.y - wall.to.y);
             const dz = Math.abs(wall.from.z - wall.to.z);
 
+            if (dz === 1) {
+                continue;
+            }
+
             let geometry;
             if (dx === 1) {
                 geometry = new THREE.BoxGeometry(wallThickness, wallSpan, wallSpan);
             } else if (dy === 1) {
                 geometry = new THREE.BoxGeometry(wallSpan, wallSpan, wallThickness);
-            } else if (dz === 1) {
-                geometry = new THREE.BoxGeometry(wallSpan, wallThickness, wallSpan);
             } else {
                 continue;
             }
@@ -152,8 +270,15 @@ export class ThreeMazeEngine {
                     continue;
                 }
 
-                const material = meta.type === "ladder" ? this.edgeMaterials.ladder : this.edgeMaterials.door;
-                addLine(pointToVector(from), pointToVector(to), material);
+                const fromVec = pointToVector(from);
+                const toVec = pointToVector(to);
+
+                if (meta.type === "ladder") {
+                    addLadder(fromVec, toVec);
+                    continue;
+                }
+
+                addLine(fromVec, toVec, this.edgeMaterials.door);
             }
         }
 
