@@ -5,43 +5,72 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>3Dedale – Maze Test</title>
     <style>
+        :root {
+            color-scheme: light dark;
+            font-family: system-ui, sans-serif;
+        }
+
         body {
-            font-family: sans-serif;
-            max-width: 480px;
-            margin: 3rem auto;
-            padding: 0 1rem;
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 2rem 1rem 3rem;
+            line-height: 1.5;
         }
-        h1 { margin-bottom: 1.5rem; }
-        form { display: grid; gap: 1rem; }
+
+        form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 1rem;
+            align-items: end;
+        }
+
         label {
-            display: flex;
-            flex-direction: column;
-            gap: 0.25rem;
-            font-weight: bold;
+            display: grid;
+            gap: 0.35rem;
+            font-weight: 600;
         }
-        input[type="number"] {
-            padding: 0.4rem 0.6rem;
-            font-size: 1rem;
-            width: 100%;
-            box-sizing: border-box;
-        }
+
+        input,
         button {
-            padding: 0.6rem 1.2rem;
-            font-size: 1rem;
+            font: inherit;
+            padding: 0.55rem 0.7rem;
+        }
+
+        button {
             cursor: pointer;
         }
-        #output {
+
+        #summary {
+            display: none;
             margin-top: 1.5rem;
             padding: 1rem;
-            background: #f4f4f4;
-            border: 1px solid #ccc;
-            white-space: pre;
+            border: 1px solid #8884;
+            border-radius: 0.5rem;
+            background: #8881;
+        }
+
+        #summary ul {
+            margin: 0.5rem 0 0;
+            padding-left: 1.25rem;
+        }
+
+        #output {
             display: none;
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            overflow: auto;
+            background: #111;
+            color: #f5f5f5;
+            white-space: pre-wrap;
+            word-break: break-word;
         }
     </style>
 </head>
 <body>
-    <h1>3Dedale – Maze Size</h1>
+    <h1>3Dedale – Maze Test Page</h1>
+    <p>Generate a maze from the requested size and inspect the rendered result.</p>
+
     <form id="mazeForm">
         <label>
             Width (columns)
@@ -55,20 +84,332 @@
             Depth (floors)
             <input type="number" id="depth" name="depth" value="1" min="1" max="20" required>
         </label>
-        <button type="submit">Generate Maze</button>
+        <button type="submit">Generate maze</button>
     </form>
+
+    <section id="summary" aria-live="polite">
+        <strong>Maze generated.</strong>
+        <ul id="summaryList"></ul>
+    </section>
+
     <pre id="output"></pre>
 
     <script>
-        document.getElementById('mazeForm').addEventListener('submit', function (e) {
-            e.preventDefault();
-            const width  = parseInt(document.getElementById('width').value,  10);
-            const height = parseInt(document.getElementById('height').value, 10);
-            const depth  = parseInt(document.getElementById('depth').value,  10);
+        class Point {
+            constructor(x, y, z) {
+                this.x = x;
+                this.y = y;
+                this.z = z;
+            }
 
-            const output = document.getElementById('output');
-            output.style.display = 'block';
-            output.textContent = `Maze size: ${width} × ${height} × ${depth}\n(width × height × depth)`;
+            key() {
+                return `${this.x},${this.y},${this.z}`;
+            }
+
+            equals(other) {
+                return this.x === other.x && this.y === other.y && this.z === other.z;
+            }
+        }
+
+        class Maze {
+            constructor(width, height, depth) {
+                this.width = width;
+                this.height = height;
+                this.depth = depth;
+                this.connections = new Map();
+            }
+
+            static edgeId(a, b) {
+                const ka = a.key();
+                const kb = b.key();
+                return ka < kb ? `${ka}|${kb}` : `${kb}|${ka}`;
+            }
+
+            pointFromKey(key) {
+                const [x, y, z] = key.split(",").map(Number);
+                return new Point(x, y, z);
+            }
+
+            isInside(point) {
+                return (
+                    point.x >= 0 &&
+                    point.x < this.width &&
+                    point.y >= 0 &&
+                    point.y < this.height &&
+                    point.z >= 0 &&
+                    point.z < this.depth
+                );
+            }
+
+            getNeighbors(point) {
+                const deltas = [
+                    [1, 0, 0],
+                    [-1, 0, 0],
+                    [0, 1, 0],
+                    [0, -1, 0],
+                    [0, 0, 1],
+                    [0, 0, -1]
+                ];
+                const neighbors = [];
+
+                for (const [dx, dy, dz] of deltas) {
+                    const next = new Point(point.x + dx, point.y + dy, point.z + dz);
+                    if (this.isInside(next)) {
+                        neighbors.push(next);
+                    }
+                }
+
+                return neighbors;
+            }
+
+            connect(a, b) {
+                const type = a.z !== b.z ? "ladder" : "door";
+                this.#addConnection(a, b, type);
+                this.#addConnection(b, a, type);
+            }
+
+            #addConnection(from, to, type) {
+                const key = from.key();
+                if (!this.connections.has(key)) {
+                    this.connections.set(key, new Map());
+                }
+                this.connections.get(key).set(to.key(), { type });
+            }
+
+            getConnectedNeighbors(point) {
+                const result = [];
+                const neighbors = this.connections.get(point.key());
+                if (!neighbors) {
+                    return result;
+                }
+
+                for (const key of neighbors.keys()) {
+                    result.push(this.pointFromKey(key));
+                }
+
+                return result;
+            }
+
+            edgeCount() {
+                const ids = new Set();
+
+                for (const [fromKey, neighbors] of this.connections.entries()) {
+                    const from = this.pointFromKey(fromKey);
+                    for (const toKey of neighbors.keys()) {
+                        ids.add(Maze.edgeId(from, this.pointFromKey(toKey)));
+                    }
+                }
+
+                return ids.size;
+            }
+
+            toJSON() {
+                const edges = [];
+                const added = new Set();
+
+                for (const [fromKey, neighbors] of this.connections.entries()) {
+                    const from = this.pointFromKey(fromKey);
+                    for (const [toKey, meta] of neighbors.entries()) {
+                        const to = this.pointFromKey(toKey);
+                        const id = Maze.edgeId(from, to);
+                        if (added.has(id)) {
+                            continue;
+                        }
+                        added.add(id);
+                        edges.push({
+                            from: { x: from.x, y: from.y, z: from.z },
+                            to: { x: to.x, y: to.y, z: to.z },
+                            type: meta.type
+                        });
+                    }
+                }
+
+                return {
+                    dimensions: {
+                        width: this.width,
+                        height: this.height,
+                        depth: this.depth
+                    },
+                    edges
+                };
+            }
+        }
+
+        class Wanderer {
+            constructor(maze, random = Math.random) {
+                this.maze = maze;
+                this.random = random;
+            }
+
+            #pick(list) {
+                return list[Math.floor(this.random() * list.length)];
+            }
+
+            generate() {
+                const total = this.maze.width * this.maze.height * this.maze.depth;
+                const start = new Point(
+                    Math.floor(this.random() * this.maze.width),
+                    Math.floor(this.random() * this.maze.height),
+                    Math.floor(this.random() * this.maze.depth)
+                );
+
+                const visited = new Set([start.key()]);
+                const visitedPoints = [start];
+                let current = start;
+
+                while (visited.size < total) {
+                    const candidates = this.maze
+                        .getNeighbors(current)
+                        .filter((point) => !visited.has(point.key()));
+
+                    if (candidates.length === 0) {
+                        const restart = visitedPoints.filter(
+                            (point) => this.maze.getNeighbors(point).some((neighbor) => !visited.has(neighbor.key()))
+                        );
+                        current = this.#pick(restart);
+                        continue;
+                    }
+
+                    const next = this.#pick(candidates);
+                    this.maze.connect(current, next);
+                    visited.add(next.key());
+                    visitedPoints.push(next);
+                    current = next;
+                }
+
+                return this.maze;
+            }
+        }
+
+        class AStarSolver {
+            constructor(maze) {
+                this.maze = maze;
+            }
+
+            static heuristic(a, b) {
+                return Math.abs(a.x - b.x) + Math.abs(a.y - b.y) + Math.abs(a.z - b.z);
+            }
+
+            solve(start, goal) {
+                const open = [{ point: start, f: AStarSolver.heuristic(start, goal) }];
+                const cameFrom = new Map();
+                const gScore = new Map([[start.key(), 0]]);
+                const closed = new Set();
+
+                while (open.length > 0) {
+                    open.sort((a, b) => a.f - b.f);
+                    const current = open.shift().point;
+
+                    if (current.equals(goal)) {
+                        return this.#buildPath(cameFrom, current);
+                    }
+
+                    if (closed.has(current.key())) {
+                        continue;
+                    }
+                    closed.add(current.key());
+
+                    for (const neighbor of this.maze.getConnectedNeighbors(current)) {
+                        const tentative = gScore.get(current.key()) + 1;
+                        const known = gScore.get(neighbor.key());
+
+                        if (known === undefined || tentative < known) {
+                            cameFrom.set(neighbor.key(), current.key());
+                            gScore.set(neighbor.key(), tentative);
+                            open.push({
+                                point: neighbor,
+                                f: tentative + AStarSolver.heuristic(neighbor, goal)
+                            });
+                        }
+                    }
+                }
+
+                return null;
+            }
+
+            #buildPath(cameFrom, current) {
+                const keys = [current.key()];
+                while (cameFrom.has(keys[0])) {
+                    keys.unshift(cameFrom.get(keys[0]));
+                }
+                return keys.map((key) => this.maze.pointFromKey(key));
+            }
+        }
+
+        class Renderer {
+            render(maze) {
+                const out = [];
+                const seen = new Set();
+
+                for (let z = 0; z < maze.depth; z += 1) {
+                    out.push({ z, doors: [], ladders: [] });
+                }
+
+                for (const [fromKey, neighbors] of maze.connections.entries()) {
+                    const from = maze.pointFromKey(fromKey);
+                    for (const [toKey, meta] of neighbors.entries()) {
+                        const to = maze.pointFromKey(toKey);
+                        const id = Maze.edgeId(from, to);
+                        if (seen.has(id)) {
+                            continue;
+                        }
+                        seen.add(id);
+
+                        const edge = {
+                            from: { x: from.x, y: from.y, z: from.z },
+                            to: { x: to.x, y: to.y, z: to.z }
+                        };
+
+                        if (meta.type === "ladder") {
+                            out[Math.min(from.z, to.z)].ladders.push(edge);
+                        } else {
+                            out[from.z].doors.push(edge);
+                        }
+                    }
+                }
+
+                return out;
+            }
+        }
+
+        const mazeForm = document.getElementById("mazeForm");
+        const summary = document.getElementById("summary");
+        const summaryList = document.getElementById("summaryList");
+        const output = document.getElementById("output");
+
+        mazeForm.addEventListener("submit", (event) => {
+            event.preventDefault();
+
+            const width = Number.parseInt(document.getElementById("width").value, 10);
+            const height = Number.parseInt(document.getElementById("height").value, 10);
+            const depth = Number.parseInt(document.getElementById("depth").value, 10);
+
+            const maze = new Maze(width, height, depth);
+            const generatedMaze = new Wanderer(maze).generate();
+            const goal = new Point(width - 1, height - 1, depth - 1);
+            const path = new AStarSolver(generatedMaze).solve(new Point(0, 0, 0), goal);
+            const rendered = new Renderer().render(generatedMaze);
+            const mazeJson = generatedMaze.toJSON();
+
+            summary.style.display = "block";
+            output.style.display = "block";
+            summaryList.replaceChildren(...[
+                `Dimensions: ${width} × ${height} × ${depth}`,
+                `Cells: ${width * height * depth}`,
+                `Connections: ${generatedMaze.edgeCount()}`,
+                `Solved path length: ${path ? path.length : 0}`,
+                `Rendered floors: ${rendered.length}`
+            ].map((item) => {
+                const listItem = document.createElement("li");
+                listItem.textContent = item;
+                return listItem;
+            }));
+
+            output.textContent = JSON.stringify({
+                dimensions: mazeJson.dimensions,
+                path: path ? path.map((point) => ({ x: point.x, y: point.y, z: point.z })) : [],
+                rendered
+            }, null, 2);
         });
     </script>
 </body>
