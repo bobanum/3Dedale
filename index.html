@@ -4,12 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>3Dedale – Maze Test</title>
+    <script type="module" src="./src/Point.js"></script>
+    <script type="module" src="./src/Wall.js"></script>
+    <script type="module" src="./src/Maze.js"></script>
+    <script type="module" src="./src/Wanderer.js"></script>
+    <script type="module" src="./src/AStarSolver.js"></script>
+    <script type="module" src="./src/Renderer.js"></script>
+    <script type="module" src="./src/app.js"></script>
     <link rel="stylesheet" href="./css/test-page.css">
-</head>
-<body>
+    </head>
+    <body>
     <h1>3Dedale – Maze Test Page</h1>
     <p>Generate a maze from the requested size and inspect the rendered result.</p>
-
+    
     <form id="mazeForm">
         <label>
             Width (columns)
@@ -25,24 +32,17 @@
         </label>
         <button type="submit">Generate maze</button>
     </form>
-
+    
     <section id="summary" aria-live="polite">
         <strong>Maze generated.</strong>
         <ul id="summaryList"></ul>
     </section>
-
+    
     <section class="viewport" aria-label="3D maze viewport">
         <canvas id="mazeCanvas" width="1280" height="720"></canvas>
     </section>
-
+    
     <pre id="output"></pre>
 
-    <script type="module" src="./src/Point.js"></script>
-    <script type="module" src="./src/Wall.js"></script>
-    <script type="module" src="./src/Maze.js"></script>
-    <script type="module" src="./src/Wanderer.js"></script>
-    <script type="module" src="./src/AStarSolver.js"></script>
-    <script type="module" src="./src/Renderer.js"></script>
-    <script type="module" src="./src/app.js"></script>
-</body>
+</body>        
 </html>

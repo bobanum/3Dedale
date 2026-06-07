@@ -33,19 +33,24 @@ export class ThreeMazeEngine {
             door: new THREE.LineBasicMaterial({ color: 0x8fd3ff }),
             ladder: new THREE.LineBasicMaterial({ color: 0xffcc66 })
         };
+        this.wallMaterial = new THREE.MeshStandardMaterial({
+            color: 0x7da0d8,
+            transparent: false,
+            opacity: 1,
+            roughness: 0.22,
+            metalness: 0.08
+        });
 
         this._rotation = 0;
         this._maze = null;
-        this._path = [];
         this._raf = null;
 
         this.resize();
         window.addEventListener("resize", () => this.resize());
     }
 
-    setMaze(maze, path = []) {
+    setMaze(maze) {
         this._maze = maze;
-        this._path = path;
         this._rebuildScene();
     }
 
@@ -107,6 +112,38 @@ export class ThreeMazeEngine {
             this.root.add(new THREE.Line(geometry, material));
         };
 
+        const wallThickness = 0.08;
+        const wallSpan = spacing * 0.9;
+
+        for (const wall of maze.walls.values()) {
+            if (wall.open) {
+                continue;
+            }
+
+            const from = pointToVector(wall.from);
+            const to = pointToVector(wall.to);
+            const midpoint = from.clone().add(to).multiplyScalar(0.5);
+
+            const dx = Math.abs(wall.from.x - wall.to.x);
+            const dy = Math.abs(wall.from.y - wall.to.y);
+            const dz = Math.abs(wall.from.z - wall.to.z);
+
+            let geometry;
+            if (dx === 1) {
+                geometry = new THREE.BoxGeometry(wallThickness, wallSpan, wallSpan);
+            } else if (dy === 1) {
+                geometry = new THREE.BoxGeometry(wallSpan, wallSpan, wallThickness);
+            } else if (dz === 1) {
+                geometry = new THREE.BoxGeometry(wallSpan, wallThickness, wallSpan);
+            } else {
+                continue;
+            }
+
+            const mesh = new THREE.Mesh(geometry, this.wallMaterial);
+            mesh.position.copy(midpoint);
+            this.root.add(mesh);
+        }
+
         for (const [fromKey, neighbors] of maze.connections.entries()) {
             const from = maze.pointFromKey(fromKey);
             for (const [toKey, meta] of neighbors.entries()) {
@@ -138,12 +175,6 @@ export class ThreeMazeEngine {
                     this.root.add(mesh);
                 }
             }
-        }
-
-        if (this._path.length > 1) {
-            const pathPoints = this._path.map((point) => pointToVector(point));
-            const geometry = new THREE.BufferGeometry().setFromPoints(pathPoints);
-            this.root.add(new THREE.Line(geometry, this.pathMaterial));
         }
     }
 }
