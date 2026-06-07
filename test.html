@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3Dedale – Maze Test</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            max-width: 480px;
+            margin: 3rem auto;
+            padding: 0 1rem;
+        }
+        h1 { margin-bottom: 1.5rem; }
+        form { display: grid; gap: 1rem; }
+        label {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            font-weight: bold;
+        }
+        input[type="number"] {
+            padding: 0.4rem 0.6rem;
+            font-size: 1rem;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        button {
+            padding: 0.6rem 1.2rem;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+        #output {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background: #f4f4f4;
+            border: 1px solid #ccc;
+            white-space: pre;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>3Dedale – Maze Size</h1>
+    <form id="mazeForm">
+        <label>
+            Width (columns)
+            <input type="number" id="width" name="width" value="5" min="2" max="100" required>
+        </label>
+        <label>
+            Height (rows)
+            <input type="number" id="height" name="height" value="5" min="2" max="100" required>
+        </label>
+        <label>
+            Depth (floors)
+            <input type="number" id="depth" name="depth" value="1" min="1" max="20" required>
+        </label>
+        <button type="submit">Generate Maze</button>
+    </form>
+    <pre id="output"></pre>
+
+    <script>
+        document.getElementById('mazeForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            const width  = parseInt(document.getElementById('width').value,  10);
+            const height = parseInt(document.getElementById('height').value, 10);
+            const depth  = parseInt(document.getElementById('depth').value,  10);
+
+            const output = document.getElementById('output');
+            output.style.display = 'block';
+            output.textContent = `Maze size: ${width} × ${height} × ${depth}\n(width × height × depth)`;
+        });
+    </script>
+</body>
+</html>
