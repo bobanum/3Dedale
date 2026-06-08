@@ -62,12 +62,13 @@ export class ThreeMazeEngine {
 			roughness: 0.22,
 			metalness: 0.08
 		});
-		this.floorMaterial = new THREE.MeshStandardMaterial({
-			color: 0x243850,
-			roughness: 0.72,
-			metalness: 0.914,
-			side: THREE.DoubleSide
-		});
+		// this.floorMaterial = new THREE.MeshStandardMaterial({
+		// 	color: 0x243850,
+		// 	roughness: 0.72,
+		// 	metalness: 0.914,
+		// 	side: THREE.DoubleSide
+		// });
+		this.floorMaterial = this.getFloorMaterial();
 
 		this._rotation = 0;
 		this._maze = null;
@@ -145,7 +146,7 @@ export class ThreeMazeEngine {
 			texture.wrapT = THREE.RepeatWrapping;
 
 			// Ajustez ces valeurs (X, Y) selon la taille de votre pièce pour éviter l'effet étiré
-			texture.repeat.set(4, 4);
+			texture.repeat.set(1, 1);
 		});
 
 		// 4. Création du matériau PBR
@@ -156,96 +157,16 @@ export class ThreeMazeEngine {
 			normalScale: new THREE.Vector2(1.5, 1.5), // Intensité du normal map (à ajuster au besoin)
 			bumpMap: dungeonBump,             // Profondeur globale des dalles
 			bumpScale: 0.05,                  // Hauteur du relief (5cm environ)
+			side: THREE.DoubleSide
 		});
 
-		// 5. Application sur le Mesh du sol
-		const geometrieSol = new THREE.PlaneGeometry(20, 20); // Sol de 20x20 unités
-		const solMesh = new THREE.Mesh(geometrieSol, materiauDonjon);
-
-		// On couche le plan à l'horizontale
-		solMesh.rotation.x = -Math.PI / 2;
-		solMesh.position.y = 0;
-
-		scene.add(solMesh);
+		return materiauDonjon;
 	}
 	testTexture(scene) {
-		// 1. Initialisation du chargeur de texture
-		const textureLoader = new THREE.TextureLoader();
-
-		// 2. Chargement des 4 cartes de texture
-		const dungeonDiffuse = textureLoader.load('img/dungeon_diffuse.webp');
-		// const dungeonRoughness = textureLoader.load('img/dungeon_roughness.webp');
-		// const dungeonNormal = textureLoader.load('img/dungeon_normal.webp');
-		const dungeonBump = textureLoader.load('img/dungeon_bump.webp');
-
-		// 3. Configuration du Tiling (Répétition seamless)
-		// On regroupe les textures dans un tableau pour appliquer les paramètres à toutes d'un coup
-		const toutesLesTextures = [dungeonDiffuse, dungeonRoughness, dungeonNormal, dungeonBump];
-
-		toutesLesTextures.forEach(texture => {
-			texture.wrapS = THREE.RepeatWrapping;
-			texture.wrapT = THREE.RepeatWrapping;
-
-			// Ajustez ces valeurs (X, Y) selon la taille de votre pièce pour éviter l'effet étiré
-			texture.repeat.set(4, 4);
-		});
-
-		// 4. Création du matériau PBR
-		const materiauDonjon = new THREE.MeshStandardMaterial({
-			map: dungeonDiffuse,             // Couleur de base
-			roughnessMap: dungeonRoughness,   // Zones mates (joints) vs zones légèrement luisantes (pierre)
-			normalMap: dungeonNormal,         // Direction de la lumière sur les micro-reliefs
-			normalScale: new THREE.Vector2(1.5, 1.5), // Intensité du normal map (à ajuster au besoin)
-			bumpMap: dungeonBump,             // Profondeur globale des dalles
-			bumpScale: 0.05,                  // Hauteur du relief (5cm environ)
-		});
 
 		// 5. Application sur le Mesh du sol
 		const geometrieSol = new THREE.PlaneGeometry(20, 20); // Sol de 20x20 unités
-		const solMesh = new THREE.Mesh(geometrieSol, materiauDonjon);
-
-		// On couche le plan à l'horizontale
-		solMesh.rotation.x = -Math.PI / 2;
-		solMesh.position.y = 0;
-
-		scene.add(solMesh);
-	}
-	test(scene) {
-		// 1. Initialisation du chargeur de texture
-		const textureLoader = new THREE.TextureLoader();
-
-		// 2. Chargement des 4 cartes de texture
-		const dungeonDiffuse = textureLoader.load('img/dungeon_diffuse.webp');
-		// const dungeonRoughness = textureLoader.load('img/dungeon_roughness.webp');
-		const dungeonNormal = textureLoader.load('img/dungeon_normal.webp');
-		const dungeonBump = textureLoader.load('img/dungeon_bump.webp');
-
-		// 3. Configuration du Tiling (Répétition seamless)
-		// On regroupe les textures dans un tableau pour appliquer les paramètres à toutes d'un coup
-		// const toutesLesTextures = [dungeonDiffuse, dungeonRoughness, dungeonNormal, dungeonBump];
-		const toutesLesTextures = [dungeonDiffuse, dungeonNormal, dungeonBump];
-
-		toutesLesTextures.forEach(texture => {
-			texture.wrapS = THREE.RepeatWrapping;
-			texture.wrapT = THREE.RepeatWrapping;
-
-			// Ajustez ces valeurs (X, Y) selon la taille de votre pièce pour éviter l'effet étiré
-			texture.repeat.set(4, 4);
-		});
-
-		// 4. Création du matériau PBR
-		const materiauDonjon = new THREE.MeshStandardMaterial({
-			map: dungeonDiffuse,             // Couleur de base
-			// roughnessMap: dungeonRoughness,   // Zones mates (joints) vs zones légèrement luisantes (pierre)
-			normalMap: dungeonNormal,         // Direction de la lumière sur les micro-reliefs
-			normalScale: new THREE.Vector2(1.5, 1.5), // Intensité du normal map (à ajuster au besoin)
-			bumpMap: dungeonBump,             // Profondeur globale des dalles
-			bumpScale: 0.05,                  // Hauteur du relief (5cm environ)
-		});
-
-		// 5. Application sur le Mesh du sol
-		const geometrieSol = new THREE.PlaneGeometry(20, 20); // Sol de 20x20 unités
-		const solMesh = new THREE.Mesh(geometrieSol, materiauDonjon);
+		const solMesh = new THREE.Mesh(geometrieSol, this.getFloorMaterial());
 
 		// On couche le plan à l'horizontale
 		solMesh.rotation.x = -Math.PI / 2;
@@ -366,7 +287,7 @@ export class ThreeMazeEngine {
 				this.root.add(slab);
 			}
 		}
-		this.test(this.scene);
+		// this.testTexture(this.scene);
 
 		const wallThickness = 0.2;
 		const wallSpan = spacing * 1.1;
