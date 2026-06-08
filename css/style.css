@@ -34,18 +34,19 @@ button {
 }
 
 #summary {
-    display: none;
+    display: none !important;
     margin-top: 1.5rem;
     padding: 1rem;
     border: 1px solid #8884;
     border-radius: 0.5rem;
     background: #8881;
+
+    ul {
+        margin: 0.5rem 0 0;
+        padding-left: 1.25rem;
+    }
 }
 
-#summary ul {
-    margin: 0.5rem 0 0;
-    padding-left: 1.25rem;
-}
 
 .viewport {
     margin-top: 1.25rem;
